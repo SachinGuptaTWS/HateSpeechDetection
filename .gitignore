@@ -1,0 +1,85 @@
+# Environment variables
+.env
+
+# Virtual environments
+/venv_deployment
+/hate-speech-env/
+/hate-speech-env-py310/
+/venv/
+/env/
+/.env/
+/.venv/
+
+# IDE files
+/.idea
+/.vscode
+*.swp
+*.swo
+*~
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Data and literature
+/data
+/literature
+
+# Models (too large for Git)
+# /saved_models/
+
+# Images and plots (keep structure, ignore generated files)
+/images/jon-tyson-IYtVtgXw72M-unsplash.jpg
+/plots/model1_learning_curve_accuracy.png
+/plots/model1_learning_curve_loss.png
+/plots/model2_learning_curve_accuracy.png
+/plots/model2_learning_curve_loss.png
+/plots/model3_learning_curve_accuracy.png
+/plots/model3_learning_curve_loss.png
+
+# Temporary files
+/temp/
+/tmp/
+*.tmp
+*.temp
+*.log
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json

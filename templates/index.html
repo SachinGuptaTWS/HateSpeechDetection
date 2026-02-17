@@ -1,0 +1,3220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hate Speech Detection System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 260px;
+            background-color: #2c3e50;
+            color: white;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.3s ease, width 0.2s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 76px;
+        }
+
+        .sidebar-header {
+            padding: 2rem 1.5rem;
+            border-bottom: 1px solid #34495e;
+            background-color: #34495e;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            padding: 1.5rem 1rem;
+        }
+
+        .sidebar-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar.collapsed .sidebar-title {
+            font-size: 0.9rem;
+            text-align: center;
+            margin-bottom: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-mark {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 40px;
+        }
+
+        .brand-mark svg {
+            width: 20px;
+            height: 20px;
+            display: block;
+            color: #ffffff;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            min-width: 0;
+        }
+
+        .brand-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            line-height: 1.15;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar.collapsed .brand {
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .brand-text {
+            display: none;
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+
+        .nav-menu {
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 1rem 1.5rem;
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+        }
+
+        .sidebar.collapsed .nav-item {
+            padding: 1rem 1rem;
+            justify-content: center;
+            border-left-width: 0;
+        }
+
+        .sidebar.collapsed .nav-section-title {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-label {
+            display: none;
+        }
+
+        .nav-item:hover {
+            background-color: #34495e;
+            color: white;
+        }
+
+        .nav-item.active {
+            background-color: #3498db;
+            border-left-color: #2980b9;
+            color: white;
+        }
+
+        .sidebar.collapsed .nav-item.active {
+            border-left-width: 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .nav-icon {
+            width: 18px;
+            height: 18px;
+            flex: 0 0 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: currentColor;
+        }
+
+        .nav-icon svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+        }
+
+        .nav-label {
+            font-weight: 500;
+            font-size: 0.95rem;
+            line-height: 1.2;
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+
+        .nav-section-title {
+            padding: 0.5rem 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            opacity: 0.6;
+            letter-spacing: 0.05em;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            background-color: #f8f9fa;
+            min-height: 100vh;
+        }
+
+        .main-content.sidebar-collapsed {
+            margin-left: 76px;
+        }
+
+        .top-bar {
+            background-color: white;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .sidebar-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: 1px solid #dee2e6;
+            background-color: #ffffff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+            color: #495057;
+        }
+
+        .sidebar-toggle:hover {
+            background-color: #f8f9fa;
+            border-color: #ced4da;
+        }
+
+        .sidebar-toggle svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #212529;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #007bff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .content-area {
+            padding: 2rem;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Card Styles */
+        .card {
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background-color: #007bff;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-align: center;
+        }
+
+        .card-icon svg {
+            width: 22px;
+            height: 22px;
+            display: block;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #212529;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            background-color: #ffffff;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        /* Button Styles */
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            margin: 0.25rem;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            line-height: 1.5;
+        }
+
+        .btn-primary {
+            color: #ffffff;
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            color: #ffffff;
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        .btn-secondary {
+            color: #ffffff;
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            color: #ffffff;
+            background-color: #545b62;
+            border-color: #545b62;
+        }
+
+        .btn-outline-primary {
+            color: #007bff;
+            background-color: transparent;
+            border-color: #007bff;
+        }
+
+        .btn-outline-primary:hover {
+            color: #ffffff;
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-danger {
+            color: #ffffff;
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .btn-danger:hover {
+            color: #ffffff;
+            background-color: #c82333;
+            border-color: #c82333;
+        }
+
+        .btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #007bff;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .chart-card {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .chart-wrap {
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .chart-canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .chart-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #212529;
+        }
+
+        .chart-subtitle {
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+
+        .chart-legend {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #212529;
+        }
+
+        .legend-swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 900px) {
+            .chart-card {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-wrap {
+                max-width: 320px;
+            }
+        }
+
+        /* Results Dashboard */
+        .results {
+            margin-top: 2rem;
+        }
+
+        .result-card {
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .result-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .result-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .result-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        .transcription-text {
+            background-color: rgba(255, 255, 255, 0.5);
+            padding: 1.5rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            font-family: 'Courier New', Courier, monospace;
+            border-left: 4px solid #007bff;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        /* Data Ingestion Styles - Professional Human Design */
+        .source-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.75rem;
+            margin-top: 2.5rem;
+        }
+
+        .source-card {
+            background: #ffffff;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 2rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .source-card:hover {
+            border-color: #0969da;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+            transform: translateY(-1px);
+        }
+
+        .source-card:focus {
+            outline: 2px solid #0969da;
+            outline-offset: -2px;
+        }
+
+        .source-icon {
+            float: right;
+            width: 48px;
+            height: 48px;
+            background: #f6f8fa;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #656d76;
+            transition: all 0.2s ease;
+        }
+
+        .source-card:hover .source-icon {
+            background: #ddf4ff;
+            color: #0969da;
+        }
+
+        .source-card h4 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 0 0 0.5rem 0;
+            color: #24292f;
+            line-height: 1.25;
+        }
+
+        .source-card p {
+            font-size: 0.875rem;
+            color: #656d76;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .results-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-item {
+            background: #ffffff;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-item h4 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #656d76;
+            margin: 0 0 0.75rem 0;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #24292f;
+            margin-bottom: 0.25rem;
+            line-height: 1;
+        }
+
+        .stat-value.hate-speech {
+            color: #cf222e;
+        }
+
+        .stat-value.safe {
+            color: #1a7f37;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e1e4e8;
+        }
+
+        .results-table th {
+            background: #f6f8fa;
+            font-weight: 600;
+            color: #24292f;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .results-table tbody tr:hover {
+            background: #f6f8fa;
+        }
+
+        .prediction-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 2em;
+            line-height: 1;
+        }
+
+        .prediction-badge.hate-speech {
+            background: #fff0f0;
+            color: #cf222e;
+            border: 1px solid #ffc9c9;
+        }
+
+        .prediction-badge.safe {
+            background: #dcffe4;
+            color: #1a7f37;
+            border: 1px solid #8dd89f;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-left: auto;
+        }
+
+        .text-muted {
+            color: #656d76;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+
+        .config-section {
+            background: #f6f8fa;
+            border-radius: 6px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #e1e4e8;
+        }
+
+        .config-section h5 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #24292f;
+            margin: 0 0 0.75rem 0;
+        }
+
+        .config-section p {
+            font-size: 0.875rem;
+            color: #656d76;
+            margin: 0 0 1rem 0;
+            line-height: 1.5;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background: #f6f8fa;
+            border: 1px solid #d0d7de;
+            color: #24292f;
+        }
+
+        .btn-secondary:hover {
+            background: #f3f4f6;
+            border-color: #c7cdd4;
+        }
+
+        .source-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .source-stat {
+            text-align: center;
+            padding: 1rem;
+            background: #ffffff;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+        }
+
+        .source-stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #0969da;
+        }
+
+        .source-stat-label {
+            font-size: 0.75rem;
+            color: #656d76;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            margin-top: 0.25rem;
+        }
+
+        /* Professional Notification System */
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 0.75rem 1rem;
+            max-width: 400px;
+            z-index: 1000;
+            transform: translateX(420px);
+            opacity: 0;
+            transition: all 0.15s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notification-success {
+            border-left: 3px solid #1a7f37;
+        }
+
+        .notification-error {
+            border-left: 3px solid #cf222e;
+        }
+
+        .notification-warning {
+            border-left: 3px solid #d29922;
+        }
+
+        .notification-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.875rem;
+        }
+
+        .notification-message {
+            flex: 1;
+            color: #24292f;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            color: #656d76;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 0.75rem;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            transition: background-color 0.15s ease;
+        }
+
+        .notification-close:hover {
+            background-color: #f3f4f6;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.15s ease;
+        }
+
+        .loading-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .loading-content {
+            background: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #0969da;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-message {
+            font-size: 0.875rem;
+            color: #24292f;
+            font-weight: 500;
+        }
+
+        /* Enhanced Table Styles */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .source-badge {
+            background: #f6f8fa;
+            color: #24292f;
+            padding: 0.125rem 0.5rem;
+            border-radius: 2em;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            border: 1px solid #d0d7de;
+        }
+
+        .text-preview {
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.875rem;
+            color: #656d76;
+        }
+
+        .confidence-score {
+            font-weight: 500;
+            color: #24292f;
+        }
+
+        .timestamp {
+            font-size: 0.75rem;
+            color: #656d76;
+        }
+
+        .stat-detail {
+            font-size: 0.75rem;
+            color: #656d76;
+            margin-top: 0.25rem;
+        }
+
+        .table-footer {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e1e4e8;
+        }
+
+        .card-description {
+            color: #656d76;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .confidence-section {
+            background-color: rgba(255, 255, 255, 0.5);
+            padding: 1.5rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .confidence-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #155724;
+        }
+
+        .confidence-bar {
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 4px;
+            height: 24px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 1s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 0.5rem;
+        }
+
+        .confidence-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #155724;
+        }
+
+        .confidence-value {
+            font-size: 0.75rem;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .prediction-section {
+            background-color: rgba(255, 255, 255, 0.5);
+            padding: 1.5rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .prediction-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #155724;
+        }
+
+        .prediction-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .prediction-badge.hate-speech {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .prediction-badge.no-hate-speech {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-item {
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 1rem;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: #155724;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #155724;
+        }
+
+        .method-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background-color: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+            border: 1px solid rgba(0, 123, 255, 0.3);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            background-color: rgba(40, 167, 69, 0.1);
+            border: 1px solid rgba(40, 167, 69, 0.3);
+            border-radius: 4px;
+        }
+
+        .status-text {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #155724;
+        }
+
+        /* Audio Preview */
+        .audio-preview {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .audio-preview audio {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .audio-info {
+            color: #6c757d;
+            font-size: 0.875rem;
+        }
+
+        .history-controls {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1rem;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .history-table th,
+        .history-table td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+
+        .history-table th {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6c757d;
+            font-weight: 700;
+            background-color: #f8f9fa;
+        }
+
+        .history-muted {
+            color: #6c757d;
+            font-size: 0.875rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+
+        .badge-danger {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+            border-color: rgba(220, 53, 69, 0.25);
+        }
+
+        .badge-success {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+            border-color: rgba(40, 167, 69, 0.25);
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            display: none;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Method Selector */
+        .method-selector {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: 0.5rem;
+        }
+
+        /* Mobile Responsive */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1001;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .main-content.sidebar-collapsed {
+                margin-left: 0;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-toggle" onclick="toggleSidebar()">Menu</button>
+    
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <div class="brand-mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V6l-8-4-8 4v6c0 6 8 10 8 10z"></path>
+                            <path d="M9 12l2 2 4-4"></path>
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <div class="brand-name">Hate Speech</div>
+                        <div class="brand-name">Detection</div>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <a href="#" class="nav-item active" onclick="showPage('dashboard')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="3" y="3" width="7" height="9"></rect>
+                                <rect x="14" y="3" width="7" height="5"></rect>
+                                <rect x="14" y="10" width="7" height="11"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                        </span>
+                        <span class="nav-label">Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" onclick="showPage('text-analysis')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <path d="M14 2v6h6"></path>
+                                <path d="M8 13h8"></path>
+                                <path d="M8 17h8"></path>
+                                <path d="M8 9h4"></path>
+                            </svg>
+                        </span>
+                        <span class="nav-label">Text Analysis</span>
+                    </a>
+                    <a href="#" class="nav-item" onclick="showPage('speech-analysis')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                <path d="M12 19v4"></path>
+                                <path d="M8 23h8"></path>
+                            </svg>
+                        </span>
+                        <span class="nav-label">Speech Analysis</span>
+                    </a>
+                    <a href="#" class="nav-item" onclick="showPage('data-ingestion')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </span>
+                        <span class="nav-label">Data Ingestion</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Tools</div>
+                    <a href="#" class="nav-item" onclick="showPage('history')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3 3v5h5"></path>
+                                <path d="M3.05 13a9 9 0 1 0 .5-4"></path>
+                                <path d="M12 7v5l4 2"></path>
+                            </svg>
+                        </span>
+                        <span class="nav-label">Analysis History</span>
+                    </a>
+                    <a href="#" class="nav-item" onclick="showPage('settings')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"></path>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-1.41 3.41h-.17a1.65 1.65 0 0 0-1.55 1.13 1.65 1.65 0 0 1-3.12 0 1.65 1.65 0 0 0-1.55-1.13h-.17a2 2 0 0 1-1.41-3.41l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 1 0-3 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 0 1 5.62 6.7h.17A1.65 1.65 0 0 0 7.34 5.57a1.65 1.65 0 0 1 3.12 0 1.65 1.65 0 0 0 1.55 1.13h.17a2 2 0 0 1 1.41 3.41l-.06.06A1.65 1.65 0 0 0 19.4 12a1.65 1.65 0 0 1 0 3z"></path>
+                            </svg>
+                        </span>
+                        <span class="nav-label">Settings</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <div class="topbar-left">
+                    <button class="sidebar-toggle" type="button" onclick="toggleSidebarCollapsed()" aria-label="Toggle sidebar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 6h18"></path>
+                            <path d="M3 12h18"></path>
+                            <path d="M3 18h18"></path>
+                        </svg>
+                    </button>
+                    <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="user-info">
+                    <span>System Administrator</span>
+                    <div class="user-avatar">A</div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Dashboard Page -->
+                <div id="dashboard" class="page active">
+                    <div class="dashboard-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="statTotalAnalyses">-</div>
+                            <div class="stat-label">Total Analyses</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statHateDetected">-</div>
+                            <div class="stat-label">Hate Speech Detected</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statDetectionRate">-</div>
+                            <div class="stat-label">Detection Rate</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statAvgConfidence">-</div>
+                            <div class="stat-label">Avg Confidence</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M21 12a9 9 0 1 1-9-9"></path>
+                                    <path d="M22 2l-10 10"></path>
+                                    <path d="M12 2v10h10"></path>
+                                </svg>
+                            </div>
+                            <h2 class="card-title">Distribution</h2>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-wrap">
+                                <canvas id="dashboardPie" class="chart-canvas" width="360" height="360"></canvas>
+                            </div>
+                            <div class="chart-meta">
+                                <div class="chart-title">Hate vs Safe</div>
+                                <div class="chart-subtitle">Based on actual analyses performed in this browser session and stored data.</div>
+                                <div class="chart-legend" id="dashboardPieLegend"></div>
+                                <div class="history-muted" id="dashboardPieNote"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Text Analysis Page -->
+                <div id="text-analysis" class="page">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <path d="M14 2v6h6"></path>
+                                    <path d="M8 13h8"></path>
+                                    <path d="M8 17h8"></path>
+                                    <path d="M8 9h4"></path>
+                                </svg>
+                            </div>
+                            <h2 class="card-title">Text Analysis</h2>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="textInput">Enter Text Content</label>
+                            <textarea id="textInput" class="form-control" rows="4" placeholder="Type or paste text to analyze for hate speech..."></textarea>
+                        </div>
+                        <button onclick="analyzeText()" class="btn btn-primary">Analyze Text</button>
+
+                        <div id="textLoading" class="loading">
+                            <div class="spinner"></div>
+                            <p>Analyzing text...</p>
+                        </div>
+
+                        <div id="textResults" class="results"></div>
+                    </div>
+                </div>
+
+                <!-- Speech Analysis Page -->
+                <div id="speech-analysis" class="page">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                    <path d="M12 19v4"></path>
+                                    <path d="M8 23h8"></path>
+                                </svg>
+                            </div>
+                            <h2 class="card-title">Speech Analysis</h2>
+                        </div>
+                        
+                        <div class="button-group">
+                            <button id="recordBtn" class="btn btn-outline-primary">Start Recording</button>
+                            <button id="uploadBtn" class="btn btn-secondary">Upload Audio</button>
+                            <input type="file" id="audioFile" accept="audio/*" style="display: none;">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Transcription Method</label>
+                            <div class="method-selector">
+                                <div class="radio-option">
+                                    <input type="radio" id="whisper" name="method" value="whisper" checked>
+                                    <label for="whisper">Whisper (Offline)</label>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="speech_recognition" name="method" value="speech_recognition">
+                                    <label for="speech_recognition">Google Speech (Online)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="speechLanguage">Language</label>
+                            <select id="speechLanguage" class="form-control">
+                                <option value="en-IN">English</option>
+                                <option value="hi-IN">Hindi</option>
+                            </select>
+                        </div>
+
+                        <div id="audioPreview" class="audio-preview">
+                            <audio id="audioPlayer" controls></audio>
+                            <div id="audioInfo" class="audio-info"></div>
+                        </div>
+
+                        <button id="processBtn" class="btn btn-primary" disabled>Process Audio</button>
+
+                        <div id="loading" class="loading">
+                            <div class="spinner"></div>
+                            <p>Processing audio...</p>
+                        </div>
+
+                        <div id="speechResults" class="results"></div>
+                    </div>
+                </div>
+
+                <!-- Data Ingestion Page -->
+                <div id="data-ingestion" class="page">
+                    <div class="page-header">
+                        <h1 class="page-title">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Data Ingestion
+                        </h1>
+                        <p class="page-description">Import and analyze data from multiple sources</p>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Overview</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="source-stats">
+                                <div class="source-stat">
+                                    <div class="source-stat-value">5</div>
+                                    <div class="source-stat-label">Sources</div>
+                                </div>
+                                <div class="source-stat">
+                                    <div class="source-stat-value">AI</div>
+                                    <div class="source-stat-label">Analysis</div>
+                                </div>
+                                <div class="source-stat">
+                                    <div class="source-stat-value">Real</div>
+                                    <div class="source-stat-label">Processing</div>
+                                </div>
+                                <div class="source-stat">
+                                    <div class="source-stat-value">24/7</div>
+                                    <div class="source-stat-label">Available</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Sources -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Data Sources</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="source-grid">
+                                <div class="source-card" data-source="twitter">
+                                    <div class="source-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"></path>
+                                        </svg>
+                                    </div>
+                                    <h4>Twitter</h4>
+                                    <p>Search tweets and analyze content for hate speech patterns</p>
+                                </div>
+                                
+                                <div class="source-card" data-source="reddit">
+                                    <div class="source-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <circle cx="12" cy="8" r="3"></circle>
+                                            <circle cx="6" cy="14" r="2"></circle>
+                                            <circle cx="18" cy="14" r="2"></circle>
+                                        </svg>
+                                    </div>
+                                    <h4>Reddit</h4>
+                                    <p>Extract posts and comments from subreddits for analysis</p>
+                                </div>
+                                
+                                <div class="source-card" data-source="facebook">
+                                    <div class="source-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"></path>
+                                        </svg>
+                                    </div>
+                                    <h4>Facebook</h4>
+                                    <p>Import posts from Facebook pages for content analysis</p>
+                                </div>
+                                
+                                <div class="source-card" data-source="web-scraping">
+                                    <div class="source-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                                        </svg>
+                                    </div>
+                                    <h4>Web Scraping</h4>
+                                    <p>Extract content from websites using custom selectors</p>
+                                </div>
+                                
+                                <div class="source-card" data-source="csv">
+                                    <div class="source-icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            <polyline points="10 9 9 9 8 9"></polyline>
+                                        </svg>
+                                    </div>
+                                    <h4>CSV Files</h4>
+                                    <p>Upload and process CSV datasets with custom column mapping</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configuration Panel -->
+                    <div id="config-panel" class="card hidden">
+                        <div class="card-header">
+                            <h3 class="card-title" id="config-title">Configuration</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-secondary" onclick="closeConfigPanel()">Cancel</button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div id="config-content">
+                                <!-- Dynamic configuration content -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Operations -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Operations</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="config-section">
+                                <h5>Batch Processing</h5>
+                                <p>Process multiple data sources simultaneously</p>
+                                <div class="btn-group">
+                                    <button class="btn btn-primary" onclick="showBatchConfig()">Configure Batch</button>
+                                    <button class="btn btn-secondary" onclick="showScheduleOptions()">Schedule Tasks</button>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h5>Data Management</h5>
+                                <p>Export, analyze, and manage your processed data</p>
+                                <div class="btn-group">
+                                    <button class="btn btn-secondary" onclick="showExportOptions()">Export Data</button>
+                                    <button class="btn btn-secondary" onclick="showDataHistory()">View History</button>
+                                    <button class="btn btn-secondary" onclick="showAnalytics()">Analytics</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results -->
+                    <div id="ingestion-results" class="card hidden">
+                        <div class="card-header">
+                            <h3 class="card-title">Results</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-primary" onclick="exportResults()">Export</button>
+                                <button class="btn btn-secondary" onclick="clearResults()">Clear</button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div id="results-summary"></div>
+                            <div id="results-table"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Page -->
+                <div id="history" class="page">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M3 3v5h5"></path>
+                                    <path d="M3.05 13a9 9 0 1 0 .5-4"></path>
+                                    <path d="M12 7v5l4 2"></path>
+                                </svg>
+                            </div>
+                            <h2 class="card-title">Analysis History</h2>
+                        </div>
+                        <div class="history-controls">
+                            <button class="btn btn-secondary" onclick="clearHistory()">Clear History</button>
+                        </div>
+                        <div id="historyContent"></div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="settings" class="page">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"></path>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-1.41 3.41h-.17a1.65 1.65 0 0 0-1.55 1.13 1.65 1.65 0 0 1-3.12 0 1.65 1.65 0 0 0-1.55-1.13h-.17a2 2 0 0 1-1.41-3.41l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 1 0-3 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 0 1 5.62 6.7h.17A1.65 1.65 0 0 0 7.34 5.57a1.65 1.65 0 0 1 3.12 0 1.65 1.65 0 0 0 1.55 1.13h.17a2 2 0 0 1 1.41 3.41l-.06.06A1.65 1.65 0 0 0 19.4 12a1.65 1.65 0 0 1 0 3z"></path>
+                                </svg>
+                            </div>
+                            <h2 class="card-title">Settings</h2>
+                        </div>
+                        <div class="form-group">
+                            <label>Default Transcription Method</label>
+                            <div class="method-selector" style="margin-bottom:0;">
+                                <div class="radio-option">
+                                    <input type="radio" id="default_whisper" name="default_method" value="whisper">
+                                    <label for="default_whisper">Whisper (Offline)</label>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="default_speech_recognition" name="default_method" value="speech_recognition">
+                                    <label for="default_speech_recognition">Google Speech (Online)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="defaultLanguage">Default Language</label>
+                            <select id="defaultLanguage" class="form-control">
+                                <option value="en-IN">English</option>
+                                <option value="hi-IN">Hindi</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Data Controls</label>
+                            <div class="button-group" style="margin-bottom:0;">
+                                <button class="btn btn-secondary" type="button" onclick="clearMetrics()">Clear Dashboard Metrics</button>
+                                <button class="btn btn-secondary" type="button" onclick="clearHistory()">Clear Analysis History</button>
+                                <button class="btn btn-danger" type="button" onclick="resetAllData()">Reset All Data</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Storage Status</label>
+                            <div id="storageStatus" class="history-muted"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let audioBlob;
+
+        // Page Navigation
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show selected page
+            document.getElementById(pageId).classList.add('active');
+            
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update page title
+            const titles = {
+                'dashboard': 'Dashboard',
+                'text-analysis': 'Text Analysis',
+                'speech-analysis': 'Speech Analysis',
+                'history': 'Analysis History',
+                'settings': 'Settings'
+            };
+            document.getElementById('pageTitle').textContent = titles[pageId];
+
+            if (pageId === 'history') {
+                renderHistory();
+            }
+
+            if (pageId === 'dashboard') {
+                renderPieChart();
+            }
+            
+            // Close mobile menu
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        function getSidebarCollapsed() {
+            try {
+                const raw = safeGetItem('hs_sidebar_collapsed_v1');
+                return raw === '1';
+            } catch {
+                return false;
+            }
+        }
+
+        function setSidebarCollapsed(isCollapsed) {
+            safeSetItem('hs_sidebar_collapsed_v1', isCollapsed ? '1' : '0');
+        }
+
+        function applySidebarCollapsedState() {
+            const sidebar = document.getElementById('sidebar');
+            const main = document.querySelector('.main-content');
+            if (!sidebar || !main) return;
+
+            const collapsed = getSidebarCollapsed();
+            if (collapsed) {
+                sidebar.classList.add('collapsed');
+                main.classList.add('sidebar-collapsed');
+            } else {
+                sidebar.classList.remove('collapsed');
+                main.classList.remove('sidebar-collapsed');
+            }
+        }
+
+        function toggleSidebarCollapsed() {
+            if (window.innerWidth <= 768) {
+                toggleSidebar();
+                return;
+            }
+            const next = !getSidebarCollapsed();
+            setSidebarCollapsed(next);
+            applySidebarCollapsedState();
+        }
+
+        function safeStorageAvailable() {
+            try {
+                const testKey = '__hs_test__';
+                localStorage.setItem(testKey, '1');
+                localStorage.removeItem(testKey);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        const storageOk = safeStorageAvailable();
+        const memoryStore = window.__hs_memory_store__ || (window.__hs_memory_store__ = {});
+
+        function safeGetItem(key) {
+            if (storageOk) {
+                try {
+                    return localStorage.getItem(key);
+                } catch (e) {
+                    return memoryStore[key] || null;
+                }
+            }
+            return memoryStore[key] || null;
+        }
+
+        function safeSetItem(key, value) {
+            if (storageOk) {
+                try {
+                    localStorage.setItem(key, value);
+                    return;
+                } catch (e) {
+                    memoryStore[key] = value;
+                    return;
+                }
+            }
+            memoryStore[key] = value;
+        }
+
+        function getSettings() {
+            try {
+                const raw = safeGetItem('hs_settings_v1');
+                if (!raw) {
+                    return {
+                        defaultTranscriptionMethod: 'whisper',
+                        defaultLanguage: 'en-IN'
+                    };
+                }
+                const parsed = JSON.parse(raw);
+                return {
+                    defaultTranscriptionMethod: parsed.defaultTranscriptionMethod === 'speech_recognition' ? 'speech_recognition' : 'whisper',
+                    defaultLanguage: parsed.defaultLanguage === 'hi-IN' ? 'hi-IN' : 'en-IN'
+                };
+            } catch {
+                return {
+                    defaultTranscriptionMethod: 'whisper',
+                    defaultLanguage: 'en-IN'
+                };
+            }
+        }
+
+        function setSettings(settings) {
+            safeSetItem('hs_settings_v1', JSON.stringify(settings));
+        }
+
+        function applySettings() {
+            const settings = getSettings();
+
+            const whisperRadio = document.getElementById('whisper');
+            const srRadio = document.getElementById('speech_recognition');
+
+            if (whisperRadio && srRadio) {
+                if (settings.defaultTranscriptionMethod === 'speech_recognition') {
+                    srRadio.checked = true;
+                } else {
+                    whisperRadio.checked = true;
+                }
+            }
+
+            const defW = document.getElementById('default_whisper');
+            const defSR = document.getElementById('default_speech_recognition');
+            if (defW && defSR) {
+                if (settings.defaultTranscriptionMethod === 'speech_recognition') {
+                    defSR.checked = true;
+                } else {
+                    defW.checked = true;
+                }
+            }
+
+            const status = document.getElementById('storageStatus');
+            if (status) {
+                status.textContent = storageOk ? 'Browser storage: Enabled' : 'Browser storage: Blocked (session-only)';
+            }
+
+            const speechLanguage = document.getElementById('speechLanguage');
+            if (speechLanguage) {
+                speechLanguage.value = settings.defaultLanguage === 'hi-IN' ? 'hi-IN' : 'en-IN';
+            }
+
+            const defaultLanguage = document.getElementById('defaultLanguage');
+            if (defaultLanguage) {
+                defaultLanguage.value = settings.defaultLanguage === 'hi-IN' ? 'hi-IN' : 'en-IN';
+            }
+        }
+
+        function bindSettingsHandlers() {
+            const inputs = document.querySelectorAll('input[name="default_method"]');
+            inputs.forEach(input => {
+                input.addEventListener('change', () => {
+                    const value = document.querySelector('input[name="default_method"]:checked')?.value;
+                    const settings = getSettings();
+                    settings.defaultTranscriptionMethod = value === 'speech_recognition' ? 'speech_recognition' : 'whisper';
+                    setSettings(settings);
+                    applySettings();
+                });
+            });
+
+            const defaultLanguage = document.getElementById('defaultLanguage');
+            if (defaultLanguage) {
+                defaultLanguage.addEventListener('change', () => {
+                    const settings = getSettings();
+                    settings.defaultLanguage = defaultLanguage.value === 'hi-IN' ? 'hi-IN' : 'en-IN';
+                    setSettings(settings);
+                    applySettings();
+                });
+            }
+        }
+
+        function clearMetrics() {
+            setMetrics({ totalAnalyses: 0, hateDetected: 0, sumConfidence: 0 });
+            renderMetrics();
+        }
+
+        function resetAllData() {
+            clearMetrics();
+            clearHistory();
+            setSettings({ defaultTranscriptionMethod: 'whisper', defaultLanguage: 'en-IN' });
+            applySettings();
+        }
+
+        function getMetrics() {
+            try {
+                const raw = safeGetItem('hs_metrics_v1');
+                if (!raw) {
+                    return {
+                        totalAnalyses: 0,
+                        hateDetected: 0,
+                        sumConfidence: 0
+                    };
+                }
+                const parsed = JSON.parse(raw);
+                return {
+                    totalAnalyses: Number(parsed.totalAnalyses) || 0,
+                    hateDetected: Number(parsed.hateDetected) || 0,
+                    sumConfidence: Number(parsed.sumConfidence) || 0
+                };
+            } catch {
+                return {
+                    totalAnalyses: 0,
+                    hateDetected: 0,
+                    sumConfidence: 0
+                };
+            }
+        }
+
+        function setMetrics(metrics) {
+            safeSetItem('hs_metrics_v1', JSON.stringify(metrics));
+        }
+
+        function renderMetrics() {
+            const metrics = getMetrics();
+            const total = metrics.totalAnalyses;
+            const hate = metrics.hateDetected;
+            const rate = total > 0 ? (hate / total) * 100 : 0;
+            const avgConfidence = total > 0 ? (metrics.sumConfidence / total) * 100 : 0;
+
+            const elTotal = document.getElementById('statTotalAnalyses');
+            const elHate = document.getElementById('statHateDetected');
+            const elRate = document.getElementById('statDetectionRate');
+            const elAvg = document.getElementById('statAvgConfidence');
+
+            if (elTotal) elTotal.textContent = String(total);
+            if (elHate) elHate.textContent = String(hate);
+            if (elRate) elRate.textContent = `${rate.toFixed(1)}%`;
+            if (elAvg) elAvg.textContent = `${avgConfidence.toFixed(1)}%`;
+
+            renderPieChart();
+        }
+
+        function renderPieChart() {
+            const canvas = document.getElementById('dashboardPie');
+            const legend = document.getElementById('dashboardPieLegend');
+            const note = document.getElementById('dashboardPieNote');
+            if (!canvas || !legend) return;
+
+            const metrics = getMetrics();
+            const total = metrics.totalAnalyses;
+            const hate = metrics.hateDetected;
+            const safe = Math.max(0, total - hate);
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const cx = width / 2;
+            const cy = height / 2;
+            const radius = Math.min(width, height) / 2 - 12;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const colors = {
+                hate: '#dc3545',
+                safe: '#28a745',
+                ring: '#e9ecef',
+                text: '#212529',
+                muted: '#6c757d'
+            };
+
+            // Base ring
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fillStyle = colors.ring;
+            ctx.fill();
+
+            if (total > 0) {
+                const segments = [
+                    { key: 'hate', value: hate, color: colors.hate },
+                    { key: 'safe', value: safe, color: colors.safe }
+                ];
+
+                let startAngle = -Math.PI / 2;
+                segments.forEach(seg => {
+                    if (seg.value <= 0) return;
+                    const slice = (seg.value / total) * Math.PI * 2;
+                    const endAngle = startAngle + slice;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.arc(cx, cy, radius, startAngle, endAngle);
+                    ctx.closePath();
+                    ctx.fillStyle = seg.color;
+                    ctx.fill();
+                    startAngle = endAngle;
+                });
+            }
+
+            // Donut hole
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius * 0.62, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            // Center text
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = colors.text;
+            ctx.font = '700 22px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Arial, sans-serif';
+            ctx.fillText(total > 0 ? `${total}` : '0', cx, cy - 10);
+            ctx.fillStyle = colors.muted;
+            ctx.font = '600 12px -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Arial, sans-serif';
+            ctx.fillText('Total Analyses', cx, cy + 14);
+
+            const hatePct = total > 0 ? (hate / total) * 100 : 0;
+            const safePct = total > 0 ? (safe / total) * 100 : 0;
+
+            legend.innerHTML = `
+                <div class="legend-item">
+                    <span class="legend-swatch" style="background:${colors.hate}"></span>
+                    <span>Hate Speech: <strong>${hate}</strong> (${hatePct.toFixed(1)}%)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-swatch" style="background:${colors.safe}"></span>
+                    <span>Safe: <strong>${safe}</strong> (${safePct.toFixed(1)}%)</span>
+                </div>
+            `;
+
+            if (note) {
+                note.textContent = storageOk ? '' : 'Browser storage is blocked. Chart uses session-only data.';
+            }
+        }
+
+        function recordAnalysis(probability, prediction) {
+            const p = Number(probability);
+            const metrics = getMetrics();
+            metrics.totalAnalyses += 1;
+            if (prediction === 'Hate Speech') {
+                metrics.hateDetected += 1;
+            }
+            if (!Number.isNaN(p)) {
+                metrics.sumConfidence += Math.max(0, Math.min(1, p));
+            }
+            setMetrics(metrics);
+            renderMetrics();
+        }
+
+        function getHistory() {
+            try {
+                const raw = safeGetItem('hs_history_v1');
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function setHistory(history) {
+            safeSetItem('hs_history_v1', JSON.stringify(history));
+        }
+
+        function addHistoryEntry(entry) {
+            const history = getHistory();
+            history.unshift(entry);
+            if (history.length > 50) {
+                history.length = 50;
+            }
+            setHistory(history);
+            renderHistory();
+        }
+
+        function clearHistory() {
+            setHistory([]);
+            renderHistory();
+        }
+
+        function formatDateTime(iso) {
+            try {
+                const d = new Date(iso);
+                return d.toLocaleString();
+            } catch {
+                return String(iso);
+            }
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyContent');
+            if (!container) return;
+
+            const history = getHistory();
+            if (history.length === 0) {
+                container.innerHTML = `
+                    <div class="history-muted">No history available.</div>
+                    ${storageOk ? '' : '<div class="history-muted" style="margin-top:0.5rem;">Browser storage is blocked. History will work for this session only.</div>'}
+                `;
+                return;
+            }
+
+            const rows = history.map(item => {
+                const badgeClass = item.prediction === 'Hate Speech' ? 'badge-danger' : 'badge-success';
+                const typeLabel = item.type === 'speech' ? 'Speech' : 'Text';
+                const confidencePct = (Number(item.probability) * 100);
+                const confText = Number.isFinite(confidencePct) ? `${confidencePct.toFixed(1)}%` : '-';
+                const preview = (item.preview || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const meta = item.meta ? String(item.meta).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+
+                return `
+                    <tr>
+                        <td>${formatDateTime(item.timestamp)}</td>
+                        <td>${typeLabel}${meta ? `<div class="history-muted">${meta}</div>` : ''}</td>
+                        <td><span class="badge ${badgeClass}">${item.prediction}</span></td>
+                        <td>${confText}</td>
+                        <td>${preview}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Type</th>
+                            <th>Result</th>
+                            <th>Confidence</th>
+                            <th>Preview</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // Text Analysis Functionality
+        function analyzeText() {
+            const textInput = document.getElementById('textInput');
+            const textLoading = document.getElementById('textLoading');
+            const textResults = document.getElementById('textResults');
+            
+            const text = textInput.value.trim();
+            
+            if (!text) {
+                showTextError('Please enter text to analyze.');
+                return;
+            }
+            
+            textLoading.style.display = 'block';
+            textResults.innerHTML = '';
+            
+            fetch('/analyze-text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: text })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showTextError(data.error);
+                } else {
+                    showTextResults(data);
+                }
+            })
+            .catch(error => {
+                showTextError('Network error: ' + error.message);
+            })
+            .finally(() => {
+                textLoading.style.display = 'none';
+            });
+        }
+
+        function showTextResults(data) {
+            const confidence = data.probability;
+            const isHateSpeech = data.prediction === 'Hate Speech';
+            const confidencePercentage = (confidence * 100).toFixed(1);
+            
+            const html = `
+                <div class="result-card result-success">
+                    <h3 class="result-title">Analysis Complete</h3>
+                    
+                    <div class="status-indicator">
+                        <span class="status-text">Analysis Successful</span>
+                    </div>
+                    
+                    <div class="transcription-text">
+                        <strong>Analyzed Text:</strong><br>
+                        "${data.text}"
+                    </div>
+                    
+                    <div class="dashboard">
+                        <div class="confidence-section">
+                            <h4 class="confidence-title">Confidence Score (FR-004)</h4>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${confidencePercentage}%">
+                                    <span class="confidence-value">${confidencePercentage}%</span>
+                                </div>
+                            </div>
+                            <div class="confidence-label">Overall Confidence: ${confidencePercentage}%</div>
+                            
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Hate Speech Score</div>
+                                    <div class="metric-value">${isHateSpeech ? confidencePercentage : (100 - confidencePercentage).toFixed(1)}%</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Safe Score</div>
+                                    <div class="metric-value">${isHateSpeech ? (100 - confidencePercentage).toFixed(1) : confidencePercentage}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="prediction-section">
+                            <h4 class="prediction-title">Classification Result</h4>
+                            <div class="prediction-badge ${isHateSpeech ? 'hate-speech' : 'no-hate-speech'}">
+                                ${data.prediction}
+                            </div>
+                            
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Risk Level</div>
+                                    <div class="metric-value">${isHateSpeech ? 'HIGH' : 'LOW'}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Status</div>
+                                    <div class="metric-value">${isHateSpeech ? 'FLAGGED' : 'CLEAN'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            textResults.innerHTML = html;
+
+            recordAnalysis(confidence, data.prediction);
+
+            addHistoryEntry({
+                timestamp: new Date().toISOString(),
+                type: 'text',
+                prediction: data.prediction,
+                probability: confidence,
+                preview: (data.text || '').slice(0, 140)
+            });
+            
+            // Animate the confidence bar
+            setTimeout(() => {
+                const confidenceFill = document.querySelector('.confidence-fill');
+                if (confidenceFill) {
+                    confidenceFill.style.width = '0%';
+                    setTimeout(() => {
+                        confidenceFill.style.width = `${confidencePercentage}%`;
+                    }, 100);
+                }
+            }, 100);
+        }
+
+        function showTextError(message) {
+            const html = `
+                <div class="result-card result-error">
+                    <h3 class="result-title">Error</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+            document.getElementById('textResults').innerHTML = html;
+        }
+
+        // Speech Analysis Functionality
+        const recordBtn = document.getElementById('recordBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const audioFile = document.getElementById('audioFile');
+        const audioPreview = document.getElementById('audioPreview');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audioInfo = document.getElementById('audioInfo');
+        const processBtn = document.getElementById('processBtn');
+        const loading = document.getElementById('loading');
+        const speechResults = document.getElementById('speechResults');
+
+        recordBtn.addEventListener('click', toggleRecording);
+        
+        async function toggleRecording() {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            sampleRate: 16000,
+                            channelCount: 1,
+                            echoCancellation: true,
+                            noiseSuppression: true
+                        } 
+                    });
+                    
+                    const types = [
+                        'audio/webm;codecs=opus',
+                        'audio/webm',
+                        'audio/ogg;codecs=opus',
+                        'audio/wav',
+                        'audio/mp4'
+                    ];
+                    
+                    let mimeType = 'audio/webm';
+                    for (const type of types) {
+                        if (MediaRecorder.isTypeSupported(type)) {
+                            mimeType = type;
+                            break;
+                        }
+                    }
+                    
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+                    audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            audioChunks.push(event.data);
+                        }
+                    };
+                    
+                    mediaRecorder.onstop = async () => {
+                        audioBlob = new Blob(audioChunks, { type: mimeType });
+                        
+                        if (mimeType !== 'audio/wav') {
+                            audioBlob = await convertToWav(audioBlob);
+                        }
+                        
+                        displayAudioPreview(audioBlob, 'Recorded Audio');
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    
+                    mediaRecorder.start(100);
+                    isRecording = true;
+                    recordBtn.textContent = 'Stop Recording';
+                    recordBtn.classList.remove('btn-outline-primary');
+                    recordBtn.classList.add('btn-danger');
+                    
+                } catch (err) {
+                    showError('Microphone access denied or not available: ' + err.message);
+                }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.textContent = 'Start Recording';
+                recordBtn.classList.remove('btn-danger');
+                recordBtn.classList.add('btn-outline-primary');
+            }
+        }
+
+        async function convertToWav(blob) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const arrayBuffer = reader.result;
+                        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                        const wav = audioBufferToWav(audioBuffer);
+                        const wavBlob = new Blob([wav], { type: 'audio/wav' });
+                        resolve(wavBlob);
+                    } catch (error) {
+                        resolve(blob);
+                    }
+                };
+                reader.readAsArrayBuffer(blob);
+            });
+        }
+
+        function audioBufferToWav(buffer) {
+            const length = buffer.length * buffer.numberOfChannels * 2 + 44;
+            const arrayBuffer = new ArrayBuffer(length);
+            const view = new DataView(arrayBuffer);
+            const channels = [];
+            let offset = 0;
+            let pos = 0;
+
+            const setUint16 = (data) => {
+                view.setUint16(pos, data, true);
+                pos += 2;
+            };
+            const setUint32 = (data) => {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            };
+
+            setUint32(0x46464952);
+            setUint32(length - 8);
+            setUint32(0x45564157);
+            setUint32(0x20746d66);
+            setUint32(16);
+            setUint16(1);
+            setUint16(buffer.numberOfChannels);
+            setUint32(buffer.sampleRate);
+            setUint32(buffer.sampleRate * 2 * buffer.numberOfChannels);
+            setUint16(buffer.numberOfChannels * 2);
+            setUint16(16);
+            setUint32(0x61746164);
+            setUint32(length - pos - 4);
+
+            for (let i = 0; i < buffer.numberOfChannels; i++) {
+                channels.push(buffer.getChannelData(i));
+            }
+
+            while (pos < length) {
+                for (let i = 0; i < buffer.numberOfChannels; i++) {
+                    let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                    sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                    view.setInt16(pos, sample, true);
+                    pos += 2;
+                }
+                offset++;
+            }
+
+            return arrayBuffer;
+        }
+
+        uploadBtn.addEventListener('click', () => {
+            audioFile.click();
+        });
+
+        audioFile.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                displayAudioPreview(file, file.name);
+            }
+        });
+
+        function displayAudioPreview(audioSource, name) {
+            const url = URL.createObjectURL(audioSource);
+            audioPlayer.src = url;
+            audioInfo.textContent = `Audio: ${name}`;
+            audioPreview.style.display = 'block';
+            
+            if (audioSource instanceof Blob) {
+                audioBlob = audioSource;
+            }
+        }
+
+        processBtn.addEventListener('click', processAudio);
+
+        async function processAudio() {
+            if (!audioBlob && !audioFile.files[0]) {
+                showError('Please record audio or upload a file first.');
+                return;
+            }
+
+            loading.style.display = 'block';
+            speechResults.innerHTML = '';
+            processBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                
+                if (audioBlob) {
+                    formData.append('audio', audioBlob, 'recording.wav');
+                } else {
+                    formData.append('audio', audioFile.files[0]);
+                }
+                
+                const method = document.querySelector('input[name="method"]:checked').value;
+                formData.append('method', method);
+
+                const language = document.getElementById('speechLanguage')?.value || 'en-IN';
+                formData.append('language', language);
+
+                const response = await fetch('/upload-audio', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSpeechResults(data);
+                } else {
+                    showError(data.error || 'Processing failed');
+                }
+
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+                processBtn.disabled = false;
+            }
+        }
+
+        function showSpeechResults(data) {
+            const confidence = data.probability;
+            const isHateSpeech = data.prediction === 'Hate Speech';
+            const confidencePercentage = (confidence * 100).toFixed(1);
+
+            const hasTranslation = Boolean(data.translated_text);
+            const classifiedText = data.classified_text || data.transcribed_text;
+            
+            const html = `
+                <div class="result-card result-success">
+                    <h3 class="result-title">Analysis Complete</h3>
+                    
+                    <div class="status-indicator">
+                        <span class="status-text">Analysis Successful</span>
+                    </div>
+                    
+                    <div class="transcription-text">
+                        <strong>Transcribed Text:</strong><br>
+                        "${data.transcribed_text}"
+                    </div>
+
+                    ${hasTranslation ? `
+                        <div class="transcription-text">
+                            <strong>Translated Text (Used for Classification):</strong><br>
+                            "${classifiedText}"
+                        </div>
+                    ` : ''}
+                    
+                    <div class="dashboard">
+                        <div class="confidence-section">
+                            <h4 class="confidence-title">Confidence Score (FR-004)</h4>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${confidencePercentage}%">
+                                    <span class="confidence-value">${confidencePercentage}%</span>
+                                </div>
+                            </div>
+                            <div class="confidence-label">Overall Confidence: ${confidencePercentage}%</div>
+                            
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Hate Speech Score</div>
+                                    <div class="metric-value">${isHateSpeech ? confidencePercentage : (100 - confidencePercentage).toFixed(1)}%</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Safe Score</div>
+                                    <div class="metric-value">${isHateSpeech ? (100 - confidencePercentage).toFixed(1) : confidencePercentage}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="prediction-section">
+                            <h4 class="prediction-title">Classification Result</h4>
+                            <div class="prediction-badge ${isHateSpeech ? 'hate-speech' : 'no-hate-speech'}">
+                                ${data.prediction}
+                            </div>
+                            
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Risk Level</div>
+                                    <div class="metric-value">${isHateSpeech ? 'HIGH' : 'LOW'}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Status</div>
+                                    <div class="metric-value">${isHateSpeech ? 'FLAGGED' : 'CLEAN'}</div>
+                                </div>
+                            </div>
+                            
+                            ${data.method_used ? `
+                                <div style="margin-top: 1rem;">
+                                    <span class="method-badge">Method: ${data.method_used}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            speechResults.innerHTML = html;
+
+            recordAnalysis(confidence, data.prediction);
+
+            addHistoryEntry({
+                timestamp: new Date().toISOString(),
+                type: 'speech',
+                prediction: data.prediction,
+                probability: confidence,
+                meta: data.method_used ? `Method: ${data.method_used}` : '',
+                preview: (data.transcribed_text || '').slice(0, 140)
+            });
+            
+            // Animate the confidence bar
+            setTimeout(() => {
+                const confidenceFill = document.querySelector('.confidence-fill');
+                if (confidenceFill) {
+                    confidenceFill.style.width = '0%';
+                    setTimeout(() => {
+                        confidenceFill.style.width = `${confidencePercentage}%`;
+                    }, 100);
+                }
+            }, 100);
+        }
+
+        function showError(message) {
+            const html = `
+                <div class="result-card result-error">
+                    <h3 class="result-title">Error</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+            speechResults.innerHTML = html;
+        }
+
+        audioPlayer.addEventListener('loadeddata', () => {
+            processBtn.disabled = false;
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                document.getElementById('sidebar').classList.remove('open');
+                applySidebarCollapsedState();
+            }
+
+            renderPieChart();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMetrics();
+            renderHistory();
+            applySettings();
+            bindSettingsHandlers();
+            applySidebarCollapsedState();
+            renderPieChart();
+        });
+
+        // Data Ingestion JavaScript
+        let ingestionResults = [];
+
+        // Source card click handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            const sourceCards = document.querySelectorAll('.source-card');
+            sourceCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const source = this.getAttribute('data-source');
+                    showSourceConfig(source);
+                });
+            });
+        });
+
+        function showSourceConfig(source) {
+            const configPanel = document.getElementById('config-panel');
+            const configTitle = document.getElementById('config-title');
+            const configContent = document.getElementById('config-content');
+            
+            configPanel.classList.remove('hidden');
+            
+            let configHTML = '';
+            
+            switch(source) {
+                case 'twitter':
+                    configTitle.textContent = 'Twitter Configuration';
+                    configHTML = `
+                        <div class="form-group">
+                            <label for="twitter-query">Search Query</label>
+                            <input type="text" id="twitter-query" class="form-control" placeholder="Enter keywords or hashtags">
+                        </div>
+                        <div class="form-group">
+                            <label for="twitter-count">Number of Tweets</label>
+                            <input type="number" id="twitter-count" class="form-control" value="100" min="1" max="1000">
+                        </div>
+                        <div class="form-group">
+                            <label for="twitter-language">Language</label>
+                            <select id="twitter-language" class="form-control">
+                                <option value="en">English</option>
+                                <option value="hi">Hindi</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="ingestFromTwitter()">Ingest Data</button>
+                    `;
+                    break;
+                    
+                case 'reddit':
+                    configTitle.textContent = 'Reddit Configuration';
+                    configHTML = `
+                        <div class="form-group">
+                            <label for="reddit-subreddit">Subreddit Name</label>
+                            <input type="text" id="reddit-subreddit" class="form-control" placeholder="e.g., news, technology">
+                        </div>
+                        <div class="form-group">
+                            <label for="reddit-post-type">Post Type</label>
+                            <select id="reddit-post-type" class="form-control">
+                                <option value="hot">Hot</option>
+                                <option value="new">New</option>
+                                <option value="top">Top</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="reddit-limit">Number of Posts</label>
+                            <input type="number" id="reddit-limit" class="form-control" value="100" min="1" max="1000">
+                        </div>
+                        <button class="btn btn-primary" onclick="ingestFromReddit()">Ingest Data</button>
+                    `;
+                    break;
+                    
+                case 'facebook':
+                    configTitle.textContent = 'Facebook Configuration';
+                    configHTML = `
+                        <div class="form-group">
+                            <label for="facebook-page-id">Page ID</label>
+                            <input type="text" id="facebook-page-id" class="form-control" placeholder="Enter Facebook Page ID">
+                        </div>
+                        <div class="form-group">
+                            <label for="facebook-limit">Number of Posts</label>
+                            <input type="number" id="facebook-limit" class="form-control" value="50" min="1" max="100">
+                        </div>
+                        <button class="btn btn-primary" onclick="ingestFromFacebook()">Ingest Data</button>
+                    `;
+                    break;
+                    
+                case 'web-scraping':
+                    configTitle.textContent = 'Web Scraping Configuration';
+                    configHTML = `
+                        <div class="form-group">
+                            <label for="scraping-urls">URLs (one per line)</label>
+                            <textarea id="scraping-urls" class="form-control" rows="4" placeholder="Enter URLs to scrape"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="scraping-selector">CSS Selector (optional)</label>
+                            <input type="text" id="scraping-selector" class="form-control" placeholder="e.g., .content, article, p">
+                        </div>
+                        <button class="btn btn-primary" onclick="ingestFromWebScraping()">Ingest Data</button>
+                    `;
+                    break;
+                    
+                case 'csv':
+                    configTitle.textContent = 'CSV File Configuration';
+                    configHTML = `
+                        <div class="form-group">
+                            <label for="csv-file">Select CSV File</label>
+                            <input type="file" id="csv-file" class="form-control" accept=".csv">
+                        </div>
+                        <div class="form-group">
+                            <label for="csv-text-column">Text Column Name</label>
+                            <input type="text" id="csv-text-column" class="form-control" value="text" placeholder="Column containing text data">
+                        </div>
+                        <button class="btn btn-primary" onclick="ingestFromCSV()">Ingest Data</button>
+                    `;
+                    break;
+            }
+            
+            configContent.innerHTML = configHTML;
+        }
+
+        function closeConfigPanel() {
+            document.getElementById('config-panel').classList.add('hidden');
+        }
+
+        // Ingestion functions with professional loading states
+        async function ingestFromTwitter() {
+            const query = document.getElementById('twitter-query').value;
+            const count = document.getElementById('twitter-count').value;
+            const language = document.getElementById('twitter-language').value;
+            
+            if (!query) {
+                showNotification('Please enter a search query', 'error');
+                return;
+            }
+            
+            showLoadingState('Ingesting Twitter data...');
+            
+            try {
+                const response = await fetch('/ingest/twitter', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query, count: parseInt(count), language })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    ingestionResults = ingestionResults.concat(data.data);
+                    showIngestionResults(data);
+                    closeConfigPanel();
+                    showNotification(`Successfully ingested ${data.count} tweets from Twitter`, 'success');
+                } else {
+                    showNotification('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            } finally {
+                hideLoadingState();
+            }
+        }
+
+        async function ingestFromReddit() {
+            const subreddit = document.getElementById('reddit-subreddit').value;
+            const postType = document.getElementById('reddit-post-type').value;
+            const limit = document.getElementById('reddit-limit').value;
+            
+            if (!subreddit) {
+                showNotification('Please enter a subreddit name', 'error');
+                return;
+            }
+            
+            showLoadingState('Ingesting Reddit data...');
+            
+            try {
+                const response = await fetch('/ingest/reddit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ subreddit, post_type: postType, limit: parseInt(limit) })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    ingestionResults = ingestionResults.concat(data.data);
+                    showIngestionResults(data);
+                    closeConfigPanel();
+                    showNotification(`Successfully ingested ${data.count} items from r/${subreddit}`, 'success');
+                } else {
+                    showNotification('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            } finally {
+                hideLoadingState();
+            }
+        }
+
+        async function ingestFromFacebook() {
+            const pageId = document.getElementById('facebook-page-id').value;
+            const postLimit = document.getElementById('facebook-limit').value;
+            
+            if (!pageId) {
+                showNotification('Please enter a Facebook Page ID', 'error');
+                return;
+            }
+            
+            showLoadingState('Ingesting Facebook data...');
+            
+            try {
+                const response = await fetch('/ingest/facebook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ page_id: pageId, post_limit: parseInt(postLimit) })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    ingestionResults = ingestionResults.concat(data.data);
+                    showIngestionResults(data);
+                    closeConfigPanel();
+                    showNotification(`Successfully ingested ${data.count} posts from Facebook`, 'success');
+                } else {
+                    showNotification('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            } finally {
+                hideLoadingState();
+            }
+        }
+
+        async function ingestFromWebScraping() {
+            const urlsText = document.getElementById('scraping-urls').value;
+            const selector = document.getElementById('scraping-selector').value;
+            
+            if (!urlsText) {
+                showNotification('Please enter URLs to scrape', 'error');
+                return;
+            }
+            
+            const urls = urlsText.split('\n').filter(url => url.trim());
+            
+            showLoadingState('Scraping web content...');
+            
+            try {
+                const response = await fetch('/ingest/web-scraping', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ urls, selector: selector || null })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    ingestionResults = ingestionResults.concat(data.data);
+                    showIngestionResults(data);
+                    closeConfigPanel();
+                    showNotification(`Successfully scraped ${data.count} items from ${data.urls_count} URLs`, 'success');
+                } else {
+                    showNotification('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            } finally {
+                hideLoadingState();
+            }
+        }
+
+        async function ingestFromCSV() {
+            const fileInput = document.getElementById('csv-file');
+            const textColumn = document.getElementById('csv-text-column').value;
+            
+            if (!fileInput.files[0]) {
+                showNotification('Please select a CSV file', 'error');
+                return;
+            }
+            
+            showLoadingState('Processing CSV file...');
+            
+            const formData = new FormData();
+            formData.append('csv_file', fileInput.files[0]);
+            formData.append('text_column', textColumn);
+            
+            try {
+                const response = await fetch('/ingest/csv', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    ingestionResults = ingestionResults.concat(data.data);
+                    showIngestionResults(data);
+                    closeConfigPanel();
+                    showNotification(`Successfully processed ${data.count} rows from CSV file`, 'success');
+                } else {
+                    showNotification('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            } finally {
+                hideLoadingState();
+            }
+        }
+
+        // Professional notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <span class="notification-message">${message}</span>
+                    <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 5000);
+        }
+
+        // Loading state management
+        function showLoadingState(message = 'Processing...') {
+            const existingLoader = document.getElementById('global-loader');
+            if (existingLoader) {
+                existingLoader.remove();
+            }
+            
+            const loader = document.createElement('div');
+            loader.id = 'global-loader';
+            loader.className = 'loading-overlay';
+            loader.innerHTML = `
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-message">${message}</div>
+                </div>
+            `;
+            
+            document.body.appendChild(loader);
+            setTimeout(() => loader.classList.add('show'), 10);
+        }
+
+        function hideLoadingState() {
+            const loader = document.getElementById('global-loader');
+            if (loader) {
+                loader.classList.remove('show');
+                setTimeout(() => loader.remove(), 300);
+            }
+        }
+
+        // Enhanced results display with professional styling
+        function showIngestionResults(data) {
+            const resultsDiv = document.getElementById('ingestion-results');
+            const summaryDiv = document.getElementById('results-summary');
+            const tableDiv = document.getElementById('results-table');
+            
+            resultsDiv.classList.remove('hidden');
+            
+            // Show comprehensive summary
+            const hateSpeechCount = data.data.filter(item => item.prediction === 'Hate Speech').length;
+            const safeCount = data.data.filter(item => item.prediction === 'No Hate Speech').length;
+            const avgConfidence = (data.data.reduce((sum, item) => sum + (item.confidence || 0), 0) / data.data.length * 100).toFixed(1);
+            
+            summaryDiv.innerHTML = `
+                <div class="results-stats">
+                    <div class="stat-item">
+                        <h4>Total Processed</h4>
+                        <div class="stat-value">${data.count}</div>
+                        <div class="stat-detail">Items analyzed</div>
+                    </div>
+                    <div class="stat-item">
+                        <h4>Hate Speech</h4>
+                        <div class="stat-value hate-speech">${hateSpeechCount}</div>
+                        <div class="stat-detail">${((hateSpeechCount/data.count)*100).toFixed(1)}% detected</div>
+                    </div>
+                    <div class="stat-item">
+                        <h4>Safe Content</h4>
+                        <div class="stat-value safe">${safeCount}</div>
+                        <div class="stat-detail">${((safeCount/data.count)*100).toFixed(1)}% safe</div>
+                    </div>
+                    <div class="stat-item">
+                        <h4>Avg Confidence</h4>
+                        <div class="stat-value">${avgConfidence}%</div>
+                        <div class="stat-detail">Model accuracy</div>
+                    </div>
+                </div>
+            `;
+            
+            // Enhanced table with professional styling
+            const displayData = data.data.slice(0, 20);
+            let tableHTML = `
+                <div class="table-responsive">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Content Preview</th>
+                                <th>Analysis</th>
+                                <th>Confidence</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            displayData.forEach(item => {
+                const textPreview = item.text ? item.text.substring(0, 100) + (item.text.length > 100 ? '...' : '') : 'N/A';
+                const confidence = item.confidence ? (item.confidence * 100).toFixed(1) + '%' : 'N/A';
+                const predictionClass = item.prediction === 'Hate Speech' ? 'hate-speech' : 'safe';
+                const timestamp = item.processed_at ? new Date(item.processed_at).toLocaleString() : 'N/A';
+                
+                tableHTML += `
+                    <tr>
+                        <td><span class="source-badge">${item.source}</span></td>
+                        <td><div class="text-preview">${textPreview}</div></td>
+                        <td><span class="prediction-badge ${predictionClass}">${item.prediction}</span></td>
+                        <td><div class="confidence-score">${confidence}</div></td>
+                        <td><div class="timestamp">${timestamp}</div></td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table></div>';
+            
+            if (data.data.length > 20) {
+                tableHTML += `
+                    <div class="table-footer">
+                        <p class="text-muted">Showing first 20 of ${data.data.length} results. Export data to view complete dataset.</p>
+                    </div>
+                `;
+            }
+            
+            tableDiv.innerHTML = tableHTML;
+        }
+
+        // Additional professional functions
+        function showBatchConfig() {
+            showNotification('Batch processing configuration will be available in the next version', 'info');
+        }
+
+        function showScheduleOptions() {
+            showNotification('Scheduled tasks will be available in the next version', 'info');
+        }
+
+        function showExportOptions() {
+            exportResults();
+        }
+
+        function showDataHistory() {
+            showNotification('Data history will be available in the next version', 'info');
+        }
+
+        function showAnalytics() {
+            showNotification('Advanced analytics will be available in the next version', 'info');
+        }
+    </script>
+</body>
+</html>
