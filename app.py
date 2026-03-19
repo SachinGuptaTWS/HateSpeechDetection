@@ -44,6 +44,106 @@ def allowed_file(filename):
 model = tf.keras.models.load_model("saved_models/model3")
 
 
+def debug_gemini_models():
+    """Debug function to list available Gemini models"""
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        app.logger.warning("No GEMINI_API_KEY found for debug")
+        return
+    
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=gemini_key)
+        app.logger.info("🔍 Available Gemini models:")
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                app.logger.info(f"  - {m.name}")
+    except Exception as e:
+        app.logger.error(f"❌ Failed to list models: {e}")
+
+
+def gemini_hate_speech_detection(text: str) -> tuple[str, float]:
+    """Primary hate speech detection using Gemini API"""
+    if not text:
+        return "No Hate Speech", 0.0
+    
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    app.logger.info(f"🔍 AI Service debug: API key present = {bool(gemini_key)}")
+    
+    # Check AI service availability at runtime
+    global GEMINI_AVAILABLE
+    if GEMINI_AVAILABLE is None:
+        try:
+            import google.generativeai as genai
+            GEMINI_AVAILABLE = True
+            app.logger.info("✅ AI service library imported successfully")
+        except Exception as e:
+            GEMINI_AVAILABLE = False
+            app.logger.error(f"❌ AI service library import failed: {e}")
+    
+    if gemini_key and GEMINI_AVAILABLE:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=gemini_key)
+            model_g = genai.GenerativeModel("gemini-2.5-flash")
+            
+            prompt = (
+                "You are an expert content moderation AI specializing in hate speech and sarcasm detection. "
+                "Analyze the following text for hate speech, considering context, nuance, and potential sarcasm.\n\n"
+                "Evaluation criteria:\n"
+                "- Hate Speech: Content that attacks, threatens, or degrades individuals/groups based on protected characteristics (race, religion, ethnicity, gender, sexual orientation, disability, etc.)\n"
+                "- Sarcasm: Statements that mean the opposite of what they literally express, often used to mock or convey contempt\n"
+                "- Context matters: Consider whether seemingly offensive content might be sarcasm, irony, or legitimate criticism\n\n"
+                "Respond with ONLY 'Hate Speech' or 'No Hate Speech' followed by a confidence score between 0.0 and 1.0. "
+                "Be conservative - if uncertain, default to 'No Hate Speech' with lower confidence.\n\n"
+                "Format: 'RESULT|CONFIDENCE'\n\n"
+                f"Text: {text}"
+            )
+            
+            app.logger.info(f"🤖 Calling AI service for text: '{text[:50]}...'")
+            response = model_g.generate_content(prompt)
+            
+            # Check for safety filter blocks
+            if response.candidates:
+                result = response.text.strip()
+                app.logger.info(f"📝 AI service raw response: '[REDACTED]'")
+                if '|' in result:
+                    prediction, confidence = result.split('|', 1)
+                    prediction = prediction.strip()
+                    try:
+                        confidence = float(confidence.strip())
+                        app.logger.info(f"✅ AI service detection: {prediction} ({confidence:.2f})")
+                        return prediction, confidence
+                    except ValueError:
+                        app.logger.warning(f"⚠️ AI service confidence parsing failed")
+                        pass
+                
+                # Fallback if format is unexpected - be more conservative
+                result_lower = result.lower()
+                hate_indicators = ['hate', 'kill', 'die', 'attack', 'violent', 'threat']
+                sarcasm_indicators = ['sarcasm', 'irony', 'joke', 'kidding', 'obviously', 'clearly']
+                
+                # Check for sarcasm indicators
+                if any(indicator in result_lower for indicator in sarcasm_indicators):
+                    return "No Hate Speech", 0.3
+                # Check for strong hate indicators
+                elif any(indicator in result_lower for indicator in hate_indicators):
+                    return "Hate Speech", 0.7
+                # Default to conservative approach
+                else:
+                    return "No Hate Speech", 0.4
+            else:
+                app.logger.warning("⚠️ AI service response blocked by content filters")
+                return None, None
+                    
+        except Exception as e:
+            app.logger.error(f"❌ AI service detection failed: {e}")
+    else:
+        app.logger.warning(f"⚠️ AI service not available: key={bool(gemini_key)}, available={GEMINI_AVAILABLE}")
+    
+    return None, None
+
+
 def translate_hi_to_en(text: str) -> str | None:
     if not text:
         return None
@@ -63,7 +163,7 @@ def translate_hi_to_en(text: str) -> str | None:
         try:
             import google.generativeai as genai
             genai.configure(api_key=gemini_key)
-            model_g = genai.GenerativeModel("gemini-1.5-flash")
+            model_g = genai.GenerativeModel("gemini-2.5-flash")
             prompt = (
                 "Translate the following Hindi text to English. "
                 "Return ONLY the English translation, no explanations.\n\n"
@@ -117,19 +217,23 @@ def home():
     if form.validate_on_submit():
         # Get the input text from the form
         input_text = form.comment.data
-        # Convert input text to a list
-        input_data = [input_text]
-        # Make prediction using the TensorFlow model
-        prediction_prob = model.predict(input_data)[0][0]
-        # Convert prediction probability to percent
-        prediction_prob = np.round(prediction_prob * 100, 1)
-        # Convert prediction probability to prediction in text form
-        if prediction_prob >= 50:
-            prediction = "Hate Speech"
+        
+        # Try Gemini first (primary method)
+        gemini_prediction, gemini_confidence = gemini_hate_speech_detection(input_text)
+        
+        if gemini_prediction is not None:
+            prediction = gemini_prediction
+            prediction_prob = gemini_confidence * 100  # Convert to percentage
         else:
-            prediction = "No Hate Speech"
-            # Invert the prediction probability
-            prediction_prob = 100 - prediction_prob
+            # Fallback to TensorFlow model
+            input_data = [input_text]
+            prediction_prob = model.predict(input_data)[0][0]
+            prediction_prob = np.round(prediction_prob * 100, 1)
+            if prediction_prob >= 50:
+                prediction = "Hate Speech"
+            else:
+                prediction = "No Hate Speech"
+                prediction_prob = 100 - prediction_prob
         # Render the prediction and prediction probability in the index.html template
         return render_template("index.html", 
                                form=form, 
@@ -143,17 +247,22 @@ def home():
 def prediction_by_api():
     # Get the input text from the api query parameter
     input_text = request.args.get("comment")
-    # Convert input text to a list
-    input_data = [input_text]
-    # Make prediction using the TensorFlow model
-    prediction_prob = model.predict(input_data)[0][0]
-    # Convert prediction probability to prediction in text form
-    if prediction_prob >= 0.5:
-        prediction = "Hate Speech"
+    
+    # Try Gemini first (primary method)
+    gemini_prediction, gemini_confidence = gemini_hate_speech_detection(input_text)
+    
+    if gemini_prediction is not None:
+        prediction = gemini_prediction
+        prediction_prob = gemini_confidence
     else:
-        prediction = "No Hate Speech"
-        # Invert the prediction probability
-        prediction_prob = 1 - prediction_prob
+        # Fallback to TensorFlow model
+        input_data = [input_text]
+        prediction_prob = model.predict(input_data)[0][0]
+        if prediction_prob >= 0.5:
+            prediction = "Hate Speech"
+        else:
+            prediction = "No Hate Speech"
+            prediction_prob = 1 - prediction_prob
     # Return json with the prediction and prediction probability
     return jsonify({"prediction": prediction,
                     "probability": float(prediction_prob)})
@@ -165,23 +274,25 @@ def analyze_text():
     try:
         # Get the input text from the request
         input_text = request.json.get("text", "")
-        if not input_text.strip():
-            return jsonify({"error": "No text provided"}), 400
         
-        # Convert input text to a list
-        input_data = [input_text]
-        # Make prediction using the TensorFlow model
-        prediction_prob = model.predict(input_data)[0][0]
-        # Convert prediction probability to percent
-        prediction_prob_percent = np.round(prediction_prob * 100, 1)
-        # Convert prediction probability to prediction in text form
-        if prediction_prob >= 0.5:
-            prediction = "Hate Speech"
+        # Try Gemini first (primary method)
+        gemini_prediction, gemini_confidence = gemini_hate_speech_detection(input_text)
+        
+        if gemini_prediction is not None:
+            prediction = gemini_prediction
+            prediction_prob = gemini_confidence
+            prediction_prob_percent = gemini_confidence * 100
         else:
-            prediction = "No Hate Speech"
-            # Invert the prediction probability
-            prediction_prob = 1 - prediction_prob
+            # Fallback to TensorFlow model
+            input_data = [input_text]
+            prediction_prob = model.predict(input_data)[0][0]
             prediction_prob_percent = np.round(prediction_prob * 100, 1)
+            if prediction_prob >= 0.5:
+                prediction = "Hate Speech"
+            else:
+                prediction = "No Hate Speech"
+                prediction_prob = 1 - prediction_prob
+                prediction_prob_percent = np.round(prediction_prob * 100, 1)
         
         # Return json with the prediction and prediction probability
         return jsonify({
@@ -295,16 +406,23 @@ def upload_audio():
             else:
                 app.logger.warning("Hindi selected but translation failed; classifying original Hindi text")
 
-        # Make prediction on classification text
-        input_data = [classification_text]
-        prediction_prob = model.predict(input_data)[0][0]
+        # Try Gemini first for hate speech detection
+        gemini_prediction, gemini_confidence = gemini_hate_speech_detection(classification_text)
         
-        # Convert prediction probability to prediction in text form
-        if prediction_prob >= 0.5:
-            prediction = "Hate Speech"
+        if gemini_prediction is not None:
+            prediction = gemini_prediction
+            prediction_prob = gemini_confidence
         else:
-            prediction = "No Hate Speech"
-            prediction_prob = 1 - prediction_prob
+            # Fallback to TensorFlow model
+            input_data = [classification_text]
+            prediction_prob = model.predict(input_data)[0][0]
+            
+            # Convert prediction probability to prediction in text form
+            if prediction_prob >= 0.5:
+                prediction = "Hate Speech"
+            else:
+                prediction = "No Hate Speech"
+                prediction_prob = 1 - prediction_prob
         
         # Log successful processing for debugging
         app.logger.info(f"Successfully processed audio: '{classification_text[:50]}...'")
