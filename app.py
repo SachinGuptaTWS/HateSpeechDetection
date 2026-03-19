@@ -88,16 +88,31 @@ def gemini_hate_speech_detection(text: str) -> tuple[str, float]:
             model_g = genai.GenerativeModel("gemini-2.5-flash")
             
             prompt = (
-                "You are an expert content moderation AI specializing in hate speech and sarcasm detection. "
-                "Analyze the following text for hate speech, considering context, nuance, and potential sarcasm.\n\n"
-                "Evaluation criteria:\n"
-                "- Hate Speech: Content that attacks, threatens, or degrades individuals/groups based on protected characteristics (race, religion, ethnicity, gender, sexual orientation, disability, etc.)\n"
-                "- Sarcasm: Statements that mean the opposite of what they literally express, often used to mock or convey contempt\n"
-                "- Context matters: Consider whether seemingly offensive content might be sarcasm, irony, or legitimate criticism\n\n"
-                "Respond with ONLY 'Hate Speech' or 'No Hate Speech' followed by a confidence score between 0.0 and 1.0. "
-                "Be conservative - if uncertain, default to 'No Hate Speech' with lower confidence.\n\n"
-                "Format: 'RESULT|CONFIDENCE'\n\n"
-                f"Text: {text}"
+                "You are an expert content moderation AI with specialized training in hate speech detection, context analysis, and sarcasm identification. "
+                "Your task is to accurately classify text while minimizing false positives and false negatives.\n\n"
+                "HATE SPEECH DEFINITION:\n"
+                "Content that constitutes hate speech includes:\n"
+                "1. Direct attacks: Threats, calls for violence, or incitement against protected groups\n"
+                "2. Dehumanization: Comparing people to animals, objects, or disease\n"
+                "3. Denial of rights: Statements denying basic human dignity, respect, or rights\n"
+                "4. Harmful stereotypes: Promoting dangerous false narratives about groups\n"
+                "5. Contemptuous language: Expressions of disgust, inferiority, or worthlessness\n\n"
+                "PROTECTED CHARACTERISTICS:\n"
+                "Race, ethnicity, religion, nationality, gender, sexual orientation, disability, age, caste, and other immutable traits\n\n"
+                "SARCASM AND CONTEXT ANALYSIS:\n"
+                "- Identify ironic statements that mean the opposite of literal meaning\n"
+                "- Distinguish legitimate criticism from hate speech\n"
+                "- Consider conversational context and cultural nuances\n"
+                "- Look for sarcasm markers: exaggeration, obvious contradictions, 'clearly', 'obviously'\n\n"
+                "CLASSIFICATION GUIDELINES:\n"
+                "- Be assertive about clear hate speech (high confidence 0.8-1.0)\n"
+                "- Be cautious with ambiguous content (moderate confidence 0.5-0.7)\n"
+                "- Default to 'No Hate Speech' only when genuinely uncertain (low confidence 0.3-0.4)\n"
+                "- Consider severity and intent in classification\n\n"
+                "RESPONSE FORMAT:\n"
+                "Respond with ONLY: 'Hate Speech|CONFIDENCE' or 'No Hate Speech|CONFIDENCE'\n"
+                "Confidence should be a decimal between 0.0 and 1.0\n\n"
+                f"Text to analyze: {text}"
             )
             
             app.logger.info(f"🤖 Calling AI service for text: '{text[:50]}...'")
@@ -118,17 +133,37 @@ def gemini_hate_speech_detection(text: str) -> tuple[str, float]:
                         app.logger.warning(f"⚠️ AI service confidence parsing failed")
                         pass
                 
-                # Fallback if format is unexpected - be more conservative
+                # Enhanced fallback logic with sophisticated pattern matching
                 result_lower = result.lower()
-                hate_indicators = ['hate', 'kill', 'die', 'attack', 'violent', 'threat']
-                sarcasm_indicators = ['sarcasm', 'irony', 'joke', 'kidding', 'obviously', 'clearly']
                 
-                # Check for sarcasm indicators
-                if any(indicator in result_lower for indicator in sarcasm_indicators):
+                # Strong hate speech patterns
+                strong_hate = ['kill', 'die', 'murder', 'violent', 'attack', 'threat', 'destroy']
+                
+                # Disrespect/dehumanization patterns
+                disrespect = ['deserve', 'respect', 'dignity', 'worthless', 'inferior', 'subhuman', 'animals', 'parasites']
+                
+                # Sarcasm indicators
+                sarcasm = ['sarcasm', 'irony', 'joke', 'kidding', 'obviously', 'clearly', 'totally', 'literally']
+                
+                # Discriminatory language
+                discriminatory = ['because they are', 'all of them', 'those people', 'their kind', 'they always']
+                
+                # Check for sarcasm first (highest priority)
+                if any(indicator in result_lower for indicator in sarcasm):
                     return "No Hate Speech", 0.3
-                # Check for strong hate indicators
-                elif any(indicator in result_lower for indicator in hate_indicators):
+                
+                # Check for strong hate speech
+                elif any(indicator in result_lower for indicator in strong_hate):
+                    return "Hate Speech", 0.9
+                
+                # Check for disrespect/dehumanization
+                elif any(indicator in result_lower for indicator in disrespect):
+                    return "Hate Speech", 0.8
+                
+                # Check for discriminatory patterns
+                elif any(pattern in result_lower for pattern in discriminatory):
                     return "Hate Speech", 0.7
+                
                 # Default to conservative approach
                 else:
                     return "No Hate Speech", 0.4
