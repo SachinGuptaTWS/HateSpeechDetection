@@ -97,22 +97,26 @@ def gemini_hate_speech_detection(text: str) -> tuple[str, float]:
                 "3. Denial of rights: Statements denying basic human dignity, respect, or rights\n"
                 "4. Harmful stereotypes: Promoting dangerous false narratives about groups\n"
                 "5. Contemptuous language: Expressions of disgust, inferiority, or worthlessness\n\n"
-                "PROTECTED CHARACTERISTICS:\n"
-                "Race, ethnicity, religion, nationality, gender, sexual orientation, disability, age, caste, and other immutable traits\n\n"
+                "CULTURAL PREFERENCES vs HATE SPEECH:\n"
+                "- Cultural preference statements: 'They don't fit our culture', 'Different values', 'Not compatible' - These are NOT hate speech\n"
+                "- Integration concerns: 'Difficulty integrating', 'Cultural differences' - These are NOT hate speech\n"
+                "- Hate speech would be: 'They should leave our country', 'They don't belong here', 'Cleanse our culture'\n\n"
                 "SARCASM AND CONTEXT ANALYSIS:\n"
                 "- Identify ironic statements that mean the opposite of literal meaning\n"
                 "- Distinguish legitimate criticism from hate speech\n"
                 "- Consider conversational context and cultural nuances\n"
-                "- Look for sarcasm markers: exaggeration, obvious contradictions, 'clearly', 'obviously'\n\n"
+                "- Look for sarcasm markers: exaggeration, obvious contradictions, 'clearly', 'obviously'\n"
+                "- Cultural statements are often about compatibility, not hatred\n\n"
                 "CLASSIFICATION GUIDELINES:\n"
-                "- Be assertive about clear hate speech (high confidence 0.8-1.0)\n"
-                "- Be cautious with ambiguous content (moderate confidence 0.5-0.7)\n"
-                "- Default to 'No Hate Speech' only when genuinely uncertain (low confidence 0.3-0.4)\n"
+                "- Be VERY conservative about cultural statements - default to 'No Hate Speech'\n"
+                "- High confidence (0.8-1.0) only for clear hate speech (threats, dehumanization, denial of rights)\n"
+                "- Moderate confidence (0.5-0.7) for ambiguous content\n"
+                "- Low confidence (0.3-0.4) for cultural preference statements\n"
                 "- Consider severity and intent in classification\n\n"
                 "RESPONSE FORMAT:\n"
                 "Respond with ONLY: 'Hate Speech|CONFIDENCE' or 'No Hate Speech|CONFIDENCE'\n"
                 "Confidence should be a decimal between 0.0 and 1.0\n\n"
-                f"Text to analyze: {text}"
+                "Text to analyze: " + text
             )
             
             app.logger.info(f"🤖 Calling AI service for text: '{text[:50]}...'")
@@ -142,14 +146,21 @@ def gemini_hate_speech_detection(text: str) -> tuple[str, float]:
                 # Disrespect/dehumanization patterns
                 disrespect = ['deserve', 'respect', 'dignity', 'worthless', 'inferior', 'subhuman', 'animals', 'parasites']
                 
+                # Cultural preference patterns (NOT hate speech)
+                cultural = ['culture', 'fit in', 'compatible', 'values', 'different', 'integration']
+                
                 # Sarcasm indicators
                 sarcasm = ['sarcasm', 'irony', 'joke', 'kidding', 'obviously', 'clearly', 'totally', 'literally']
                 
                 # Discriminatory language
                 discriminatory = ['because they are', 'all of them', 'those people', 'their kind', 'they always']
                 
-                # Check for sarcasm first (highest priority)
-                if any(indicator in result_lower for indicator in sarcasm):
+                # Check for cultural preference statements first (lowest priority for hate speech)
+                if any(indicator in result_lower for indicator in cultural):
+                    return "No Hate Speech", 0.3
+                
+                # Check for sarcasm indicators
+                elif any(indicator in result_lower for indicator in sarcasm):
                     return "No Hate Speech", 0.3
                 
                 # Check for strong hate speech
